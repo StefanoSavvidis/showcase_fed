@@ -11,7 +11,6 @@ dotenv.config();
 
 const app = new Koa();
 const {SHOPIFY_API_KEY, SHOPIFY_SECRET} = process.env;
-
 app.use(session(app));
 app.keys = [SHOPIFY_SECRET];
 

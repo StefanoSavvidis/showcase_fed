@@ -3,6 +3,9 @@ import {renderToString} from 'react-dom/server';
 import HTML from '@shopify/react-html';
 import App from '../app/App';
 import {StaticRouter} from 'react-router';
+import axios from 'axios';
+console.log('hello');
+
 export default (ctx) => {
   const markup = renderToString(
     <HTML deferedScripts={[{path: 'bundle.js'}]}>
