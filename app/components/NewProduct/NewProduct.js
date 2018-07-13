@@ -1,5 +1,5 @@
 import React from 'react';
-import {ApolloProvider, Mutation, Query} from 'react-apollo';
+import {ApolloProvider, Mutation, Query, graphql} from 'react-apollo';
 import ApolloClient, {gql} from 'apollo-boost';
 import {
   AppProvider,
@@ -21,6 +21,7 @@ import {
 } from '@shopify/polaris';
 import Fetch from 'react-fetch-component';
 import axios from 'axios';
+import NEW_PRODUCT_MUTATION from './NewProductMutation';
 import {concatSeries} from 'async';
 import {runInThisContext} from 'vm';
 
@@ -204,6 +205,7 @@ class NewProduct extends React.Component {
           illustration={this.state.card.imageUrlHiRes}
           primaryAction={{
             content: 'Add to Store',
+            onAction: () => mutate(createProduct),
           }}
         />
       ) : null;
@@ -276,14 +278,53 @@ class NewProduct extends React.Component {
       </Page>
     ) : null;
 
+    function mutate(createProduct) {
+      const productInput = {
+        title: title,
+      };
+
+      createProduct({
+        variables: {
+          product: this.state.name,
+        },
+      });
+    }
+
     return (
       <ApolloProvider client={client}>
-        <AppProvider>
-          <React.Fragment>
-            {loadingState}
-            {content}
-          </React.Fragment>
-        </AppProvider>
+        <Mutation mutation={NEW_PRODUCT_MUTATION}>
+          {(createProduct, mutationResults) => {
+            const loading = mutationResults.loading && (
+              <Banner title="Loading...">
+                <p>Creating product</p>
+              </Banner>
+            );
+
+            const error = mutationResults.error && (
+              <Banner title="Error" status="warning">
+                <p>Product could not be created</p>
+              </Banner>
+            );
+
+            const success = mutationResults.data && (
+              <Banner title="Success" status="success">
+                <p>
+                  Successfully created{' '}
+                  {mutationResults.data.productCreate.product.title}
+                </p>
+              </Banner>
+            );
+
+            return (
+              <AppProvider>
+                <React.Fragment>
+                  {loadingState}
+                  {content}
+                </React.Fragment>
+              </AppProvider>
+            );
+          }}
+        </Mutation>
       </ApolloProvider>
     );
   }
