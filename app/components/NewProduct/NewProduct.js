@@ -7,7 +7,7 @@ import {
   Card,
   Banner,
   Badge,
-  TextStyle,
+  Spinner,
   Heading,
   RadioButton,
   SkeletonPage,
@@ -22,6 +22,8 @@ import {
 import Fetch from 'react-fetch-component';
 import axios from 'axios';
 import NEW_PRODUCT_MUTATION from './NewProductMutation';
+import NEW_COLLECTION_MUTATION from './NewCollectionMutation';
+import COLLECTION_QUERRY from './CollectionQuerry';
 import {concatSeries} from 'async';
 import {runInThisContext} from 'vm';
 
@@ -55,7 +57,7 @@ class NewProduct extends React.Component {
       .get(`https://pokeapi.co/api/v2/pokemon/${this.state.id}`)
       .then(function(response) {
         const properName = response.data.species.name;
-
+        console.log(response.data);
         self.setState({
           loading: false,
           pokemon: response.data,
@@ -205,48 +207,128 @@ class NewProduct extends React.Component {
     let error = null;
     let success = null;
 
+    function collectionMutate(createCollection, object) {
+      console.log(object);
+
+      const collectionInput = {
+        title: object.title,
+      };
+
+      createCollection({
+        variables: {
+          collection: collectionInput,
+        },
+      });
+    }
+
     const cardLoaded =
       this.state.card && this.state.card != 'mew' ? (
         <ApolloProvider client={client}>
-          <Mutation mutation={NEW_PRODUCT_MUTATION}>
-            {(createProduct, mutationResults) => {
-              loading = mutationResults.loading && (
-                <Banner title="Loading...">
-                  <p>Creating product</p>
-                </Banner>
-              );
+          <Query query={COLLECTION_QUERRY}>
+            {({loading, error, data}) => {
+              if (loading) return <Spinner size="small" color="teal" />;
+              if (error) return `Error! ${error.message}`;
 
-              error = mutationResults.error && (
-                <Banner title="Error" status="warning">
-                  <p>Product could not be created</p>
-                </Banner>
-              );
+              console.log(data);
 
-              if (mutationResults.data) {
-                console.log(mutationResults.data);
+              if (data && data.shop.collections) {
+                let collections = data.shop.collections.edges.map(
+                  (edge) => edge.node.title,
+                );
+
+                let collectionsID = data.shop.collections.edges.map(
+                  (edge) => edge.node.id,
+                );
+                let mainType = this.state.pokemon.types[
+                  this.state.pokemon.types.length - 1
+                ].type.name;
+
+                let typeIncluded = collections.includes(mainType);
+                console.log(collections);
+                console.log(mainType);
+                console.log(collections.includes(mainType));
+                let create = true;
+                return (
+                  <Mutation mutation={NEW_COLLECTION_MUTATION}>
+                    {(createCollection, mutationResults) => {
+                      if (mutationResults.data) {
+                        console.log(collections);
+                        console.log(collectionsID);
+                        collections.push(mainType);
+                        collectionsID.push(
+                          mutationResults.data.collectionCreate.collection.id,
+                        );
+                        console.log(collections);
+                        console.log(collectionsID);
+                      }
+
+                      if (!typeIncluded && !mutationResults.data && create) {
+                        console.log('create collection');
+                        create = false;
+                        const collectionInput = {
+                          title: mainType,
+                        };
+
+                        createCollection({
+                          variables: {
+                            collection: collectionInput,
+                          },
+                        });
+                      }
+                      return (
+                        <Mutation mutation={NEW_PRODUCT_MUTATION}>
+                          {(createProduct, mutationResults) => {
+                            loading = mutationResults.loading && (
+                              <Banner title="Loading...">
+                                <p>Creating product</p>
+                              </Banner>
+                            );
+
+                            error = mutationResults.error && (
+                              <Banner title="Error" status="warning">
+                                <p>Product could not be created</p>
+                              </Banner>
+                            );
+
+                            if (mutationResults.data) {
+                              console.log(mutationResults.data);
+                            }
+                            success = mutationResults.data && (
+                              <Banner title="Success" status="success">
+                                <p>Successfully created </p>
+                              </Banner>
+                            );
+
+                            let joinID = null;
+                            for (let i = 0; i < collections.length; i++) {
+                              if (collections[i] == mainType) {
+                                joinID = collectionsID[i];
+                              }
+                            }
+                            return (
+                              <CalloutCard
+                                title={''}
+                                illustration={this.state.card.imageUrlHiRes}
+                                primaryAction={{
+                                  content: 'Add to Store',
+                                  onAction: () =>
+                                    productMutate(createProduct, {
+                                      name: this.state.name,
+                                      image: this.state.card.imageUrlHiRes,
+                                      id: joinID,
+                                    }),
+                                }}
+                              />
+                            );
+                          }}
+                        </Mutation>
+                      );
+                    }}
+                  </Mutation>
+                );
               }
-              success = mutationResults.data && (
-                <Banner title="Success" status="success">
-                  <p>Successfully created </p>
-                </Banner>
-              );
-
-              return (
-                <CalloutCard
-                  title={''}
-                  illustration={this.state.card.imageUrlHiRes}
-                  primaryAction={{
-                    content: 'Add to Store',
-                    onAction: () =>
-                      mutate(createProduct, {
-                        name: this.state.name,
-                        image: this.state.card.imageUrlHiRes,
-                      }),
-                  }}
-                />
-              );
             }}
-          </Mutation>
+          </Query>
         </ApolloProvider>
       ) : null;
 
@@ -262,6 +344,15 @@ class NewProduct extends React.Component {
         >
           <p>MEW IS TOO POWERFUL TO BE ADDED TO THE STORE</p>
         </CalloutCard>
+      ) : null;
+
+    const type1 =
+      this.state.pokemon && this.state.pokemon.types[0] ? (
+        <Badge>{this.state.pokemon.types[0].type.name}</Badge>
+      ) : null;
+    const type2 =
+      this.state.pokemon && this.state.pokemon.types[1] ? (
+        <Badge>{this.state.pokemon.types[1].type.name}</Badge>
       ) : null;
 
     const content = !this.state.loading ? (
@@ -292,8 +383,8 @@ class NewProduct extends React.Component {
                 <Stack spacing="extraLoose">
                   <Avatar size="large" source={this.state.current_image} />
                   <Stack vertical={true}>
-                    <Badge status="warning">Fire</Badge>
-                    <Badge>Flying</Badge>
+                    {type1}
+                    {type2}
                   </Stack>
                   <Stack vertical>
                     <RadioButton
@@ -322,10 +413,17 @@ class NewProduct extends React.Component {
       </Page>
     ) : null;
 
-    function mutate(createProduct, object) {
+    function productMutate(createProduct, object) {
       console.log(object);
       const productInput = {
         title: object.name,
+        images: [
+          {
+            altText: object.name,
+            src: object.image,
+          },
+        ],
+        collectionsToJoin: [object.id],
       };
 
       createProduct({

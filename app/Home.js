@@ -10,11 +10,12 @@ import {
   TextStyle,
   Heading,
   Avatar,
-  SkeletonPage,
+  Thumbnail,
   Layout,
   SkeletonBodyText,
   TextContainer,
   SkeletonDisplayText,
+  ResourceList,
 } from '@shopify/polaris';
 import Fetch from 'react-fetch-component';
 
@@ -44,11 +45,18 @@ const SHOP_NAME = gql`
 const PRODUCT_DATA = gql`
   {
     shop {
-      products(first: 1) {
+      products(first: 10) {
         edges {
           node {
             id
             title
+            images(first: 1) {
+              edges {
+                node {
+                  src
+                }
+              }
+            }
           }
         }
       }
@@ -98,10 +106,49 @@ class Home extends React.Component {
                 <break />
                 <Query query={PRODUCT_DATA}>
                   {({loading, error, data}) => {
-                    if (loading) return <Spinner size="small" color="teal" />;
-                    if (error) return `Error! ${error.message}`;
-                    if (data)
-                      return <p>{data.shop.products.edges[0].node.title}</p>;
+                    if (data) {
+                      console.log(data);
+                      let content = <p />;
+                      if (data.shop) {
+                        console.log(data.shop.products);
+                        content = (
+                          <ResourceList
+                            resourceName={{
+                              singular: 'pokemon',
+                              plural: 'pokemon',
+                            }}
+                            items={data.shop.products.edges}
+                            renderItem={(item) => {
+                              let {id, title} = item.node;
+                              title = title.replace(/^\w/, (c) =>
+                                c.toUpperCase(),
+                              );
+                              const media = (
+                                <Thumbnail
+                                  source={item.node.images.edges[0].node.src}
+                                  alt={title}
+                                />
+                              );
+                              return (
+                                <ResourceList.Item
+                                  id={id}
+                                  media={media}
+                                  accessibilityLabel={`Delete ${title}`}
+                                >
+                                  <h3>
+                                    <TextStyle variation="strong">
+                                      {title}
+                                    </TextStyle>
+                                  </h3>
+                                </ResourceList.Item>
+                              );
+                            }}
+                          />
+                        );
+                      }
+
+                      return content;
+                    }
                   }}
                 </Query>
               </Card.Section>
