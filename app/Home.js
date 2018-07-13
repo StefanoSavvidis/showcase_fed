@@ -64,6 +64,20 @@ const PRODUCT_DATA = gql`
   }
 `;
 
+const COLLECTION_QUERY = gql`
+  {
+    shop {
+      collections(first: 10) {
+        edges {
+          node {
+            id
+            title
+          }
+        }
+      }
+    }
+  }
+`;
 const client = new ApolloClient({
   fetchOptions: {
     credentials: 'include',
@@ -92,7 +106,7 @@ class Home extends React.Component {
               },
             ]}
           >
-            <Card title="My Pokemon">
+            <Card>
               <Card.Section>
                 <Query query={SHOP_NAME}>
                   {({loading, error, data}) => {
@@ -103,7 +117,9 @@ class Home extends React.Component {
                     return <Heading>{data.shop.name}</Heading>;
                   }}
                 </Query>
-                <break />
+              </Card.Section>
+              <break />
+              <Card.Section title="Pokemon">
                 <Query query={PRODUCT_DATA}>
                   {({loading, error, data}) => {
                     if (data) {
@@ -147,6 +163,53 @@ class Home extends React.Component {
                         );
                       }
 
+                      return content;
+                    }
+                  }}
+                </Query>
+              </Card.Section>
+              <break />
+              <Card.Section title="Collections">
+                <Query query={COLLECTION_QUERY}>
+                  {({loading, error, data}) => {
+                    if (data) {
+                      console.log(data);
+
+                      let content = <p />;
+
+                      if (data.shop) {
+                        console.log(data.shop.collections.edges);
+
+                        content = (
+                          <ResourceList
+                            resourceName={{
+                              singular: 'type',
+                              plural: 'types',
+                            }}
+                            items={data.shop.collections.edges}
+                            renderItem={(item) => {
+                              let {id, title} = item.node;
+                              title = title.replace(/^\w/, (c) =>
+                                c.toUpperCase(),
+                              );
+                              const media = <Avatar initials={title[0]} />;
+                              return (
+                                <ResourceList.Item
+                                  id={id}
+                                  media={media}
+                                  accessibilityLabel={`Delete ${title}`}
+                                >
+                                  <h3>
+                                    <TextStyle variation="strong">
+                                      {title}
+                                    </TextStyle>
+                                  </h3>
+                                </ResourceList.Item>
+                              );
+                            }}
+                          />
+                        );
+                      }
                       return content;
                     }
                   }}
