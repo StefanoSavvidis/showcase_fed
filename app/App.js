@@ -5,8 +5,8 @@ import RoutePropagator from '@shopify/react-shopify-app-route-propagator';
 const Propagator = withRouter(RoutePropagator);
 
 import Pokedex from './Pokedex';
-import Pokemon from './Pokemon';
 import Home from './Home';
+import CreateProduct from './routes/Pokemon';
 
 class App extends React.Component {
   constructor(props) {
@@ -24,7 +24,7 @@ class App extends React.Component {
         <Switch>
           <Route exact path="/" component={Pokedex} />
           <Route exact path="/mine" component={Home} />
-          <Route exact path="/:id" component={Pokemon} />
+          <Route exact path="/:id" component={CreateProduct} />
         </Switch>
       </React.Fragment>
     );
