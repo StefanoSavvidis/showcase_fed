@@ -5,7 +5,7 @@ import {
   AppProvider,
   Page,
   Card,
-  Button,
+  Banner,
   Badge,
   TextStyle,
   Heading,
@@ -54,10 +54,13 @@ class NewProduct extends React.Component {
     axios
       .get(`https://pokeapi.co/api/v2/pokemon/${this.state.id}`)
       .then(function(response) {
+        const properName = response.data.species.name;
+
         self.setState({
           loading: false,
           pokemon: response.data,
           current_image: response.data.sprites.front_default,
+          name: properName,
         });
 
         if (self.state.pokemon.name != 'mew') {
@@ -198,16 +201,53 @@ class NewProduct extends React.Component {
       </SkeletonPage>
     ) : null;
 
+    let loading = null;
+    let error = null;
+    let success = null;
+
     const cardLoaded =
       this.state.card && this.state.card != 'mew' ? (
-        <CalloutCard
-          title={''}
-          illustration={this.state.card.imageUrlHiRes}
-          primaryAction={{
-            content: 'Add to Store',
-            onAction: () => mutate(createProduct),
-          }}
-        />
+        <ApolloProvider client={client}>
+          <Mutation mutation={NEW_PRODUCT_MUTATION}>
+            {(createProduct, mutationResults) => {
+              loading = mutationResults.loading && (
+                <Banner title="Loading...">
+                  <p>Creating product</p>
+                </Banner>
+              );
+
+              error = mutationResults.error && (
+                <Banner title="Error" status="warning">
+                  <p>Product could not be created</p>
+                </Banner>
+              );
+
+              if (mutationResults.data) {
+                console.log(mutationResults.data);
+              }
+              success = mutationResults.data && (
+                <Banner title="Success" status="success">
+                  <p>Successfully created </p>
+                </Banner>
+              );
+
+              return (
+                <CalloutCard
+                  title={''}
+                  illustration={this.state.card.imageUrlHiRes}
+                  primaryAction={{
+                    content: 'Add to Store',
+                    onAction: () =>
+                      mutate(createProduct, {
+                        name: this.state.name,
+                        image: this.state.card.imageUrlHiRes,
+                      }),
+                  }}
+                />
+              );
+            }}
+          </Mutation>
+        </ApolloProvider>
       ) : null;
 
     const mewLoaded =
@@ -223,6 +263,7 @@ class NewProduct extends React.Component {
           <p>MEW IS TOO POWERFUL TO BE ADDED TO THE STORE</p>
         </CalloutCard>
       ) : null;
+
     const content = !this.state.loading ? (
       <Page
         title="Pokify"
@@ -237,6 +278,9 @@ class NewProduct extends React.Component {
           },
         ]}
       >
+        {loading}
+        {error}
+        {success}
         <Layout>
           <Layout.Section>
             <Card
@@ -278,54 +322,26 @@ class NewProduct extends React.Component {
       </Page>
     ) : null;
 
-    function mutate(createProduct) {
+    function mutate(createProduct, object) {
+      console.log(object);
       const productInput = {
-        title: title,
+        title: object.name,
       };
 
       createProduct({
         variables: {
-          product: this.state.name,
+          product: productInput,
         },
       });
     }
 
     return (
-      <ApolloProvider client={client}>
-        <Mutation mutation={NEW_PRODUCT_MUTATION}>
-          {(createProduct, mutationResults) => {
-            const loading = mutationResults.loading && (
-              <Banner title="Loading...">
-                <p>Creating product</p>
-              </Banner>
-            );
-
-            const error = mutationResults.error && (
-              <Banner title="Error" status="warning">
-                <p>Product could not be created</p>
-              </Banner>
-            );
-
-            const success = mutationResults.data && (
-              <Banner title="Success" status="success">
-                <p>
-                  Successfully created{' '}
-                  {mutationResults.data.productCreate.product.title}
-                </p>
-              </Banner>
-            );
-
-            return (
-              <AppProvider>
-                <React.Fragment>
-                  {loadingState}
-                  {content}
-                </React.Fragment>
-              </AppProvider>
-            );
-          }}
-        </Mutation>
-      </ApolloProvider>
+      <AppProvider>
+        <React.Fragment>
+          {loadingState}
+          {content}
+        </React.Fragment>
+      </AppProvider>
     );
   }
 }

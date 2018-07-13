@@ -100,9 +100,8 @@ class Home extends React.Component {
                   {({loading, error, data}) => {
                     if (loading) return <Spinner size="small" color="teal" />;
                     if (error) return `Error! ${error.message}`;
-
-                    console.log(data);
-                    return <p>{data.shop.products.edges[0].node.title}</p>;
+                    if (data)
+                      return <p>{data.shop.products.edges[0].node.title}</p>;
                   }}
                 </Query>
               </Card.Section>
